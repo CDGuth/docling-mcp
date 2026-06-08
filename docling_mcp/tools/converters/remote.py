@@ -10,7 +10,8 @@ from docling_core.types.doc.labels import DocItemLabel
 
 from docling_mcp.docling_cache import get_cache_key
 from docling_mcp.logger import setup_logger
-from docling_mcp.settings.service_client import settings
+from docling_mcp.settings.conversion import settings as conversion_settings
+from docling_mcp.settings.service_client import settings as service_settings
 from docling_mcp.shared import local_document_cache, local_stack_cache
 
 from .base import ConversionOutput
@@ -23,7 +24,7 @@ class RemoteDocumentConverter:
 
     def __init__(self) -> None:
         """Initialize remote converter."""
-        if not settings.service_url:
+        if not service_settings.service_url:
             raise ValueError(
                 "DOCLING_SERVICE_URL must be set for remote mode. "
                 "Set it via environment variable or .env file."
@@ -31,14 +32,21 @@ class RemoteDocumentConverter:
 
         # DoclingServiceClient requires api_key to be str, not Optional[str]
         api_key = (
-            settings.service_api_key if settings.service_api_key is not None else ""
+            service_settings.service_api_key
+            if service_settings.service_api_key is not None
+            else ""
         )
 
         self.client = DoclingServiceClient(
-            url=settings.service_url,
+            url=service_settings.service_url,
             api_key=api_key,
+            job_timeout=service_settings.service_timeout,
+            http_read_timeout=service_settings.service_timeout,
+            http_retries=service_settings.service_max_retries,
         )
-        logger.info(f"Initialized remote converter with URL: {settings.service_url}")
+        logger.info(
+            f"Initialized remote converter with URL: {service_settings.service_url}"
+        )
 
     def convert_document(self, source: str) -> ConversionOutput:
         """Convert document using remote API."""
@@ -51,17 +59,31 @@ class RemoteDocumentConverter:
             logger.info(f"Document found in cache: {cache_key}")
             return ConversionOutput(True, cache_key)
 
-        # Configure conversion options
         options = ConvertDocumentsOptions(
-            do_ocr=True,
-            do_table_structure=True,
-            include_images=False,
+            do_ocr=conversion_settings.do_ocr,
+            force_ocr=conversion_settings.force_ocr,
+            ocr_preset=conversion_settings.ocr_preset,
+            do_table_structure=conversion_settings.do_table_structure,
+            table_mode=conversion_settings.table_mode,
+            pdf_backend=conversion_settings.pdf_backend,
+            abort_on_error=conversion_settings.abort_on_error,
+            include_images=conversion_settings.include_images,
+            image_export_mode=conversion_settings.image_export_mode,
+            do_code_enrichment=conversion_settings.do_code_enrichment,
+            do_formula_enrichment=conversion_settings.do_formula_enrichment,
+            do_picture_classification=conversion_settings.do_picture_classification,
+            do_picture_description=conversion_settings.do_picture_description,
             to_formats=[OutputFormat.JSON],
-            abort_on_error=False,
         )
 
+        candidate_path = Path(source).expanduser()
+        if candidate_path.is_file():
+            conversion_source: str | Path = candidate_path.resolve()
+        else:
+            conversion_source = source
+
         # Convert via remote API
-        result = self.client.convert(source=source, options=options)
+        result = self.client.convert(source=conversion_source, options=options)
 
         # Check for errors
         if hasattr(result, "status") and hasattr(result.status, "is_error"):

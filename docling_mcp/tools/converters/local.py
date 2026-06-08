@@ -51,6 +51,21 @@ class LocalDocumentConverter:
         pipeline_options.generate_page_images = settings.keep_images
         pipeline_options.do_ocr = settings.do_ocr
         pipeline_options.do_table_structure = settings.do_table_structure
+        if hasattr(pipeline_options, "do_code_enrichment"):
+            pipeline_options.do_code_enrichment = settings.do_code_enrichment
+        if hasattr(pipeline_options, "do_formula_enrichment"):
+            pipeline_options.do_formula_enrichment = settings.do_formula_enrichment
+        if hasattr(pipeline_options, "do_picture_classification"):
+            pipeline_options.do_picture_classification = settings.do_picture_classification
+        if hasattr(pipeline_options, "do_picture_description"):
+            pipeline_options.do_picture_description = settings.do_picture_description
+
+        ocr_options = getattr(pipeline_options, "ocr_options", None)
+        if ocr_options is not None and hasattr(ocr_options, "force_full_page_ocr"):
+            ocr_options.force_full_page_ocr = settings.force_ocr
+        table_options = getattr(pipeline_options, "table_structure_options", None)
+        if table_options is not None and hasattr(table_options, "mode"):
+            table_options.mode = settings.table_mode
 
         format_options: dict[InputFormat, FormatOption] = {
             InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),

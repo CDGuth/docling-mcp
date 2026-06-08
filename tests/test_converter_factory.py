@@ -9,11 +9,18 @@ from docling_mcp.settings.service_client import ConversionMode
 from docling_mcp.tools.converters.factory import get_converter
 
 
+def configure_remote_settings(mock_settings: Any) -> None:
+    mock_settings.service_url = "https://test.example.com"
+    mock_settings.service_api_key = None
+    mock_settings.service_timeout = 123.0
+    mock_settings.service_max_retries = 4
+
+
 class TestConverterFactory:
     """Test suite for converter factory."""
 
     @patch("docling_mcp.tools.converters.remote.DoclingServiceClient")
-    @patch("docling_mcp.tools.converters.remote.settings")
+    @patch("docling_mcp.tools.converters.remote.service_settings")
     @patch("docling_mcp.tools.converters.factory.settings")
     def test_get_converter_remote_mode(
         self, mock_factory_settings: Any, mock_remote_settings: Any, mock_client: Any
@@ -21,8 +28,7 @@ class TestConverterFactory:
         """Test factory returns remote converter in remote mode."""
         mock_factory_settings.conversion_mode = ConversionMode.REMOTE
         mock_factory_settings.fallback_to_local = False
-        mock_remote_settings.service_url = "https://test.example.com"
-        mock_remote_settings.service_api_key = None
+        configure_remote_settings(mock_remote_settings)
 
         # Mock the client health check
         mock_client_instance = Mock()
@@ -56,7 +62,7 @@ class TestConverterFactory:
 
     @patch("docling_mcp.tools.converters.local.LOCAL_CONVERSION_AVAILABLE", True)
     @patch("docling_mcp.tools.converters.remote.DoclingServiceClient")
-    @patch("docling_mcp.tools.converters.remote.settings")
+    @patch("docling_mcp.tools.converters.remote.service_settings")
     @patch("docling_mcp.tools.converters.factory.settings")
     def test_get_converter_fallback_to_local(
         self, mock_factory_settings: Any, mock_remote_settings: Any, mock_client: Any
@@ -74,7 +80,7 @@ class TestConverterFactory:
         assert result.__class__.__name__ == "LocalDocumentConverter"
 
     @patch("docling_mcp.tools.converters.local.LOCAL_CONVERSION_AVAILABLE", False)
-    @patch("docling_mcp.tools.converters.remote.settings")
+    @patch("docling_mcp.tools.converters.remote.service_settings")
     @patch("docling_mcp.tools.converters.factory.settings")
     def test_get_converter_no_fallback_when_local_unavailable(
         self, mock_factory_settings: Any, mock_remote_settings: Any
@@ -90,7 +96,7 @@ class TestConverterFactory:
             get_converter()
 
     @patch("docling_mcp.tools.converters.remote.DoclingServiceClient")
-    @patch("docling_mcp.tools.converters.remote.settings")
+    @patch("docling_mcp.tools.converters.remote.service_settings")
     @patch("docling_mcp.tools.converters.factory.settings")
     def test_get_converter_remote_unavailable_no_fallback(
         self, mock_factory_settings: Any, mock_remote_settings: Any, mock_client: Any
@@ -98,8 +104,7 @@ class TestConverterFactory:
         """Test factory returns converter even when remote unavailable and fallback disabled."""
         mock_factory_settings.conversion_mode = ConversionMode.REMOTE
         mock_factory_settings.fallback_to_local = False
-        mock_remote_settings.service_url = "https://test.example.com"
-        mock_remote_settings.service_api_key = None
+        configure_remote_settings(mock_remote_settings)
 
         # Mock unhealthy service
         mock_client_instance = Mock()
