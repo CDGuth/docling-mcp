@@ -2,8 +2,8 @@
   "manifest_version": "0.2",
   "name": "docling-mcp",
   "display_name": "Docling MCP",
-  "version": "2.0.0",
-  "description": "Docling MCP Server - Document processing and analysis with remote API and local conversion support",
+  "version": "2.1.0",
+  "description": "Docling MCP Server - Document processing and analysis with Docling Serve and local conversion support",
   "author": {
     "name": "Docling team",
     "email": "deepsearch-core@zurich.ibm.com"
@@ -37,10 +37,22 @@
         "DOCLING_SERVICE_API_KEY": "${user_config.service_api_key}",
         "DOCLING_CONVERSION_MODE": "${user_config.conversion_mode}",
         "DOCLING_SERVICE_TIMEOUT": "${user_config.service_timeout}",
+        "DOCLING_SERVICE_MAX_RETRIES": "${user_config.service_max_retries}",
         "DOCLING_FALLBACK_TO_LOCAL": "${user_config.fallback_to_local}",
         "DOCLING_MCP_KEEP_IMAGES": "${user_config.keep_images}",
         "DOCLING_MCP_DO_OCR": "${user_config.do_ocr}",
-        "DOCLING_MCP_DO_TABLE_STRUCTURE": "${user_config.do_table_structure}"
+        "DOCLING_MCP_FORCE_OCR": "${user_config.force_ocr}",
+        "DOCLING_MCP_OCR_PRESET": "${user_config.ocr_preset}",
+        "DOCLING_MCP_DO_TABLE_STRUCTURE": "${user_config.do_table_structure}",
+        "DOCLING_MCP_TABLE_MODE": "${user_config.table_mode}",
+        "DOCLING_MCP_PDF_BACKEND": "${user_config.pdf_backend}",
+        "DOCLING_MCP_ABORT_ON_ERROR": "${user_config.abort_on_error}",
+        "DOCLING_MCP_INCLUDE_IMAGES": "${user_config.include_images}",
+        "DOCLING_MCP_IMAGE_EXPORT_MODE": "${user_config.image_export_mode}",
+        "DOCLING_MCP_DO_CODE_ENRICHMENT": "${user_config.do_code_enrichment}",
+        "DOCLING_MCP_DO_FORMULA_ENRICHMENT": "${user_config.do_formula_enrichment}",
+        "DOCLING_MCP_DO_PICTURE_CLASSIFICATION": "${user_config.do_picture_classification}",
+        "DOCLING_MCP_DO_PICTURE_DESCRIPTION": "${user_config.do_picture_description}"
       }
     }
   },
@@ -49,7 +61,7 @@
       "type": "string",
       "title": "Version",
       "description": "Version of the docling-mcp package to install.",
-      "default": "2.0.0",
+      "default": "2.1.0",
       "required": false
     },
     "install_extras": {
@@ -62,21 +74,21 @@
     "conversion_mode": {
       "type": "string",
       "title": "Conversion Mode",
-      "description": "Choose 'remote' (requires service_url) or 'local' (requires [local] extra). Default: remote",
+      "description": "Choose 'remote' for Docling Serve or 'local' for local conversion. Remote mode requires service_url. Local mode requires the [local] extra. Default: remote",
       "default": "remote",
       "required": true
     },
     "service_url": {
       "type": "string",
       "title": "Docling Service URL",
-      "description": "URL of the Docling Serve API endpoint (required for remote mode). Example: https://your-docling-service.example.com",
+      "description": "Docling Serve base URL for remote mode. Do not include /v1. Example: https://your-docling-serve-instance.example.com",
       "default": "",
       "required": false
     },
     "service_api_key": {
       "type": "string",
       "title": "Service API Key",
-      "description": "API key for authenticating with Docling Serve (optional, if required by your service). Leave empty if not needed.",
+      "description": "API key for authenticated Docling Serve instances. The MCP server sends this value as the X-Api-Key header. Leave empty for unauthenticated services.",
       "default": "",
       "sensitive": true,
       "required": false
@@ -84,8 +96,15 @@
     "service_timeout": {
       "type": "number",
       "title": "Service Timeout (seconds)",
-      "description": "Timeout in seconds for remote API requests. Range: 10-3600, Default: 300",
-      "default": 300.0,
+      "description": "Timeout in seconds for remote jobs and HTTP reads. Range: 10-3600, Default: 3600",
+      "default": 3600.0,
+      "required": false
+    },
+    "service_max_retries": {
+      "type": "number",
+      "title": "Service Max Retries",
+      "description": "Maximum HTTP retries for Docling Serve requests. Default: 3",
+      "default": 3,
       "required": false
     },
     "fallback_to_local": {
@@ -98,22 +117,99 @@
     "keep_images": {
       "type": "boolean",
       "title": "Keep Images",
-      "description": "Generate and store page images while converting documents (applies to local mode).",
+      "description": "Generate and store page images while converting documents in local mode.",
       "default": false,
       "required": false
     },
     "do_ocr": {
       "type": "boolean",
       "title": "Enable OCR",
-      "description": "Enable Optical Character Recognition for scanned documents (applies to local mode).",
+      "description": "Enable OCR for scanned documents. Applies to remote conversion and local conversion.",
       "default": true,
+      "required": false
+    },
+    "force_ocr": {
+      "type": "boolean",
+      "title": "Force OCR",
+      "description": "Force OCR even when text is available. Applies to remote conversion and supported local Docling versions.",
+      "default": false,
+      "required": false
+    },
+    "ocr_preset": {
+      "type": "string",
+      "title": "OCR Preset",
+      "description": "OCR engine preset for remote conversion. Accepted values depend on Docling; common values are auto, easyocr, tesseract, rapidocr.",
+      "default": "auto",
       "required": false
     },
     "do_table_structure": {
       "type": "boolean",
       "title": "Enable Table Structure",
-      "description": "Enable table structure recognition (applies to local mode).",
+      "description": "Enable table structure recognition. Applies to remote conversion and local conversion.",
       "default": true,
+      "required": false
+    },
+    "table_mode": {
+      "type": "string",
+      "title": "Table Mode",
+      "description": "Table structure mode. Accepted values: fast, accurate.",
+      "default": "accurate",
+      "required": false
+    },
+    "pdf_backend": {
+      "type": "string",
+      "title": "PDF Backend",
+      "description": "PDF backend for remote conversion. Accepted values depend on Docling; common values include docling_parse, pypdfium2, dlparse_v1, dlparse_v2, dlparse_v4.",
+      "default": "docling_parse",
+      "required": false
+    },
+    "abort_on_error": {
+      "type": "boolean",
+      "title": "Abort on Error",
+      "description": "Abort remote conversion on document processing errors.",
+      "default": false,
+      "required": false
+    },
+    "include_images": {
+      "type": "boolean",
+      "title": "Include Images",
+      "description": "Include images in remote conversion output. Use false with placeholder export mode to avoid large image payloads.",
+      "default": false,
+      "required": false
+    },
+    "image_export_mode": {
+      "type": "string",
+      "title": "Image Export Mode",
+      "description": "Remote image export mode. Accepted values: placeholder, embedded, referenced.",
+      "default": "placeholder",
+      "required": false
+    },
+    "do_code_enrichment": {
+      "type": "boolean",
+      "title": "Code Enrichment",
+      "description": "Enable code enrichment for supported Docling conversions.",
+      "default": false,
+      "required": false
+    },
+    "do_formula_enrichment": {
+      "type": "boolean",
+      "title": "Formula Enrichment",
+      "description": "Enable formula enrichment. Useful for scientific papers, but adds processing time.",
+      "default": false,
+      "required": false
+    },
+    "do_picture_classification": {
+      "type": "boolean",
+      "title": "Picture Classification",
+      "description": "Enable picture classification for supported Docling conversions.",
+      "default": false,
+      "required": false
+    },
+    "do_picture_description": {
+      "type": "boolean",
+      "title": "Picture Description",
+      "description": "Enable picture description for supported Docling conversions.",
+      "default": false,
       "required": false
     }
   },

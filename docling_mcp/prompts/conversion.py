@@ -13,6 +13,8 @@ def generate_docling_document_from_pdf(file_path: str) -> str:
     return (
         f"Convert the PDF file at '{file_path}' into a Docling document by calling "
         "convert_document_into_docling_document with the file path as the source. "
+        "If remote conversion is configured, the local file will be uploaded to "
+        "Docling Serve. "
         "Once conversion is complete, return the document_key so I can use it with "
         "other tools. Also confirm whether the document was served from cache "
         "(from_cache=true) or freshly converted (from_cache=false)."
@@ -29,6 +31,8 @@ def convert_and_summarize(source: str) -> str:
     return (
         f"Convert the document at '{source}' by calling "
         "convert_document_into_docling_document. "
+        "If the source is a URL, remote conversion lets Docling Serve fetch it; "
+        "if it is an existing local file, remote conversion uploads it to Docling Serve. "
         "Once you have the document_key, export the document to markdown using "
         "export_docling_document_to_markdown. "
         "Then produce a structured summary that includes: "
@@ -48,6 +52,7 @@ def convert_directory_and_list(directory: str) -> str:
     return (
         f"Convert all files in the directory '{directory}' by calling "
         "convert_directory_files_into_docling_document. "
+        "If remote conversion is configured, each local file is uploaded to Docling Serve. "
         "Once the conversion is complete, present the results as a table with two columns: "
         "'Document Key' and 'From Cache'. "
         "Also report the total number of files converted and how many were served from cache."

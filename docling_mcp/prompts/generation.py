@@ -40,6 +40,8 @@ def convert_and_rewrite(source: str, instructions: str) -> str:
     return (
         f"Convert the document at '{source}' and rewrite it following these instructions: "
         f"{instructions}\n\n"
+        "In remote conversion mode, URLs are fetched by Docling Serve and existing "
+        "local files are uploaded to Docling Serve.\n\n"
         "Use this sequence of tools:\n"
         "1. convert_document_into_docling_document — convert and cache the source document.\n"
         "2. export_docling_document_to_markdown — read the full content of the original.\n"

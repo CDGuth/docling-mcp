@@ -5,6 +5,7 @@ from pathlib import Path
 from docling.datamodel.base_models import OutputFormat
 from docling.datamodel.service.options import ConvertDocumentsOptions
 from docling.service_client import DoclingServiceClient
+from docling.service_client.exceptions import ServiceError
 from docling_core.types.doc.document import ContentLayer
 from docling_core.types.doc.labels import DocItemLabel
 
@@ -27,7 +28,9 @@ class RemoteDocumentConverter:
         if not service_settings.service_url:
             raise ValueError(
                 "DOCLING_SERVICE_URL must be set for remote mode. "
-                "Set it via environment variable or .env file."
+                "Set it in the MCP server environment or .env file. Use the "
+                "Docling Serve base URL without /v1, and set "
+                "DOCLING_SERVICE_API_KEY if the service requires authentication."
             )
 
         # DoclingServiceClient requires api_key to be str, not Optional[str]
@@ -82,13 +85,18 @@ class RemoteDocumentConverter:
         else:
             conversion_source = source
 
-        # Convert via remote API
-        result = self.client.convert(source=conversion_source, options=options)
+        try:
+            result = self.client.convert(source=conversion_source, options=options)
+        except ServiceError as e:
+            raise RuntimeError(self._format_service_error(e)) from e
 
         # Check for errors
         if hasattr(result, "status") and hasattr(result.status, "is_error"):
             if result.status.is_error:
-                raise Exception(f"Remote conversion failed: {result.errors}")
+                raise RuntimeError(
+                    "Docling Serve completed the conversion with errors: "
+                    f"{result.errors}"
+                )
 
         # Cache the result
         local_document_cache[cache_key] = result.document
@@ -129,6 +137,25 @@ class RemoteDocumentConverter:
         try:
             health = self.client.health()
             return health.status == "healthy"
+        except ServiceError as e:
+            logger.warning(f"Remote service health check failed: {self._format_service_error(e)}")
+            return False
         except Exception as e:
             logger.warning(f"Remote service health check failed: {e}")
             return False
+
+    def _format_service_error(self, error: ServiceError) -> str:
+        """Format Docling Serve errors with MCP-specific configuration hints."""
+        if error.status_code in {401, 403}:
+            return (
+                f"Docling Serve rejected the request with status {error.status_code}. "
+                "The MCP server sends DOCLING_SERVICE_API_KEY as the X-Api-Key "
+                "header. Verify that DOCLING_SERVICE_API_KEY is set in the MCP "
+                "server process environment, not only in your interactive shell; "
+                "desktop MCP clients often require env values in their MCP server "
+                "configuration."
+            )
+
+        if error.status_code is not None:
+            return f"Docling Serve request failed: {error}"
+        return f"Docling Serve request failed: {error.message}"

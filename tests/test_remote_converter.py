@@ -6,6 +6,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from docling.service_client.exceptions import ServiceError
+
 from docling_mcp.tools.converters.base import ConversionOutput
 from docling_mcp.tools.converters.remote import RemoteDocumentConverter
 
@@ -237,6 +239,47 @@ class TestRemoteDocumentConverter:
         assert options.do_formula_enrichment is True
         assert options.do_picture_classification is True
         assert options.do_picture_description is True
+
+    @patch("docling_mcp.tools.converters.remote.local_document_cache", {})
+    @patch("docling_mcp.tools.converters.remote.DoclingServiceClient")
+    @patch("docling_mcp.tools.converters.remote.service_settings")
+    def test_convert_auth_error_includes_mcp_env_hint(
+        self, mock_settings: Any, mock_client_class: Any
+    ) -> None:
+        """Test authentication failures include an MCP environment hint."""
+        configure_service_settings(mock_settings)
+        mock_client = Mock()
+        mock_client.convert.side_effect = ServiceError(
+            "Task submission failed.", status_code=401, detail="Unauthorized"
+        )
+        mock_client_class.return_value = mock_client
+
+        converter = RemoteDocumentConverter()
+
+        with pytest.raises(RuntimeError) as exc_info:
+            converter.convert_document("missing.pdf")
+
+        message = str(exc_info.value)
+        assert "Docling Serve rejected the request with status 401" in message
+        assert "DOCLING_SERVICE_API_KEY" in message
+        assert "X-Api-Key" in message
+
+    @patch("docling_mcp.tools.converters.remote.DoclingServiceClient")
+    @patch("docling_mcp.tools.converters.remote.service_settings")
+    def test_is_available_auth_error_logs_mcp_env_hint(
+        self, mock_settings: Any, mock_client_class: Any
+    ) -> None:
+        """Test health-check auth failures include an MCP environment hint."""
+        configure_service_settings(mock_settings)
+        mock_client = Mock()
+        mock_client.health.side_effect = ServiceError(
+            "Health check request failed.", status_code=403, detail="Forbidden"
+        )
+        mock_client_class.return_value = mock_client
+
+        converter = RemoteDocumentConverter()
+
+        assert converter.is_available() is False
 
     @patch("docling_mcp.tools.converters.remote.DoclingServiceClient")
     @patch("docling_mcp.tools.converters.remote.service_settings")

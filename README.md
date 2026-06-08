@@ -50,9 +50,40 @@ pip install docling-mcp
 
 Then configure your environment:
 ```bash
-export DOCLING_SERVICE_URL=https://your-docling-service.example.com
-export DOCLING_SERVICE_API_KEY=your-api-key-here
 export DOCLING_CONVERSION_MODE=remote
+export DOCLING_SERVICE_URL=https://your-docling-serve-instance.example.com
+export DOCLING_SERVICE_API_KEY=replace-with-your-key
+export DOCLING_SERVICE_TIMEOUT=3600
+export DOCLING_SERVICE_MAX_RETRIES=3
+```
+
+When using a desktop MCP client, set these variables in the MCP server config's
+`env` block. MCP server processes often do not inherit variables exported in an
+interactive shell. Authenticated Docling Serve instances receive the key as the
+`X-Api-Key` header.
+
+Remote mode supports both URLs and local files. URLs are fetched by the remote
+Docling Serve instance. Existing local file paths are uploaded directly to the
+authenticated Docling Serve instance, so temporary public file hosting is not
+required.
+
+Docling conversion behavior can be tuned with `DOCLING_MCP_*` variables, for
+example:
+
+```bash
+export DOCLING_MCP_DO_OCR=false
+export DOCLING_MCP_FORCE_OCR=false
+export DOCLING_MCP_OCR_PRESET=auto
+export DOCLING_MCP_DO_TABLE_STRUCTURE=true
+export DOCLING_MCP_TABLE_MODE=fast
+export DOCLING_MCP_PDF_BACKEND=docling_parse
+export DOCLING_MCP_ABORT_ON_ERROR=false
+export DOCLING_MCP_INCLUDE_IMAGES=false
+export DOCLING_MCP_IMAGE_EXPORT_MODE=placeholder
+export DOCLING_MCP_DO_CODE_ENRICHMENT=false
+export DOCLING_MCP_DO_FORMULA_ENRICHMENT=true
+export DOCLING_MCP_DO_PICTURE_CLASSIFICATION=false
+export DOCLING_MCP_DO_PICTURE_DESCRIPTION=false
 ```
 
 ### Local Mode (Full Features)
@@ -78,8 +109,9 @@ pip install docling-mcp[local]
 
 Configure for remote with fallback:
 ```bash
-export DOCLING_SERVICE_URL=https://your-docling-service.example.com
 export DOCLING_CONVERSION_MODE=remote
+export DOCLING_SERVICE_URL=https://your-docling-serve-instance.example.com
+export DOCLING_SERVICE_API_KEY=replace-with-your-key
 export DOCLING_FALLBACK_TO_LOCAL=true
 ```
 
@@ -90,7 +122,8 @@ export DOCLING_FALLBACK_TO_LOCAL=true
 - Generation tools:
     - Document generation in DoclingDocument, which can be exported to multiple formats
 - Local document caching for improved performance
-- Support for local files and URLs as document sources
+- Support for URLs and local files as document sources. In remote mode, URLs are
+  fetched by Docling Serve and existing local files are uploaded to Docling Serve.
 - Memory management for handling large documents
 - Logging system for debugging and monitoring
 - RAG applications with Milvus upload and retrieval

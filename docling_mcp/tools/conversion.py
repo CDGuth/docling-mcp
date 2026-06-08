@@ -61,7 +61,13 @@ def is_document_in_local_cache(
 def convert_document_into_docling_document(
     source: Annotated[
         str,
-        Field(description="The URL or local file path to the document."),
+        Field(
+            description=(
+                "The URL or local file path to the document. In remote mode, "
+                "URLs are fetched by Docling Serve and existing local files "
+                "are uploaded to Docling Serve."
+            )
+        ),
     ],
 ) -> ConversionOutput:
     """Convert a document of any type from a URL or local path and store in local cache.
@@ -71,7 +77,8 @@ def convert_document_into_docling_document(
     Docling document in a local cache. It returns an output with a boolean
     set to False along with the document's unique cache key. If the document
     was already in the local cache, the conversion is skipped and the output
-    boolean is set to True.
+    boolean is set to True. In remote mode, existing local files are uploaded
+    to Docling Serve and URLs are fetched by the remote service.
     """
     try:
         converter = get_converter()
@@ -108,13 +115,14 @@ async def convert_directory_files_into_docling_document(
     documents in a local cache. It returns a list of conversion outputs, where each
     output consists of a boolean set to False along with a document's unique cache key.
     If a document was already in the local cache, the conversion is skipped and the
-    output boolean is set to True.
+    output boolean is set to True. In remote mode, each existing local file is uploaded
+    to Docling Serve.
     """
     try:
         # Remove any quotes from the source string
         source = source.strip("\"'")
         directory = Path(source)
-        files: list[Path] = [f for f in directory.iterdir() if f.is_file()]
+        files: list[Path] = [f for f in directory.iterdir() if f.is_file()]  # noqa: ASYNC240
         out: list[ConversionOutput] = []
 
         logger.info(f"Converting {len(files)} files from directory: {source}")

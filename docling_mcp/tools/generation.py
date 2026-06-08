@@ -203,7 +203,11 @@ def page_thumbnail(
     im_ref = doc.pages[page_no].image
     if im_ref is None:
         raise ValueError(
-            "The DoclingDocument does not have page images. Please configure your server for generating page images using DOCLING_MCP_KEEP_IMAGES=true."
+            "The DoclingDocument does not have page images. For local conversion, "
+            "set DOCLING_MCP_KEEP_IMAGES=true before converting the document. "
+            "For remote conversion, enable image output with "
+            "DOCLING_MCP_INCLUDE_IMAGES=true and a non-placeholder "
+            "DOCLING_MCP_IMAGE_EXPORT_MODE if supported by your Docling Serve instance."
         )
     im = im_ref.pil_image
     if im is None:
